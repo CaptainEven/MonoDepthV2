@@ -128,6 +128,7 @@ class ConvBlock(nn.Module):
     """
     Layer to perform a convolution followed by ELU
     """
+
     def __init__(self, in_channels, out_channels):
         """
         :param in_channels:
@@ -152,6 +153,7 @@ class Conv3x3(nn.Module):
     """
     Layer to pad and convolve input
     """
+
     def __init__(self, in_channels, out_channels, use_refl=True):
         """
         :param in_channels:
@@ -175,6 +177,27 @@ class Conv3x3(nn.Module):
         out = self.pad(x)
         out = self.conv(out)
         return out
+
+
+def get_img_field(img, disp):
+    """
+    :param img: right image(the source image)
+    :param disp:
+    :return:
+    """
+    batch_size, _, height, width = disp.shape
+    N, C, H, W = img.shape
+    assert N == batch_size and height == H and width == width
+
+    # Original coordinates of pixels
+    x_base = torch.linspace(0, 1, width).repeat(batch_size, height, 1).type_as(img)
+    y_base = torch.linspace(0, 1, height).repeat(batch_size, width, 1).transpose(1, 2).type_as(img)
+
+    # Apply shift in X direction
+    x_shifts = disp[:, 0, :, :]  # Disparity is passed in NCHW format with 1 channel
+    flow_field = torch.stack((x_base - x_shifts, y_base), dim=3)  # left_x - disp = right_x
+
+    return flow_field
 
 
 class BackprojectDepth(nn.Module):
@@ -215,7 +238,7 @@ class BackprojectDepth(nn.Module):
         :param inv_K:
         :return:
         """
-        ## tranform to normalized camera coordinates by inverse K
+        ## tranform pixel coordinates to normalized camera coordinates by inverse K
         cam_points = torch.matmul(inv_K[:, :3, :3], self.pix_coords)
 
         ## transform to 3d points in the world
@@ -266,7 +289,7 @@ class Project3D(nn.Module):
         pix_coords[..., 0] /= self.width - 1.0
         pix_coords[..., 1] /= self.height - 1.0
 
-        ## normalize to [-1, 1]
+        ## normalize to -0.5, 0.5] then to [-1, 1]
         pix_coords = (pix_coords - 0.5) * 2.0
 
         return pix_coords

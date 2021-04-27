@@ -28,18 +28,24 @@ from utils import download_model_if_doesnt_exist, find_free_gpu, select_device
 METRIC_SCALE = 1.2  # xiaomi binocular: 5.4, 1.2, 3.6
 # calib_f_path = '/mnt/diskd/public/kitti/training/calib/000010.txt'
 
-## xiaomi stereo rig parameters:
-f = (998.72290039062500 + 1000.0239868164063) * 0.5  # 1000.0
-cx = 671.15643310546875
-cy = 384.32458496093750
-b = 0.12  # m
+# ## kitti stereo rig parameters:
+# f = 718.335
+# cx = 609.5593
+# cy = 172.8540
+# b = 0.54  # m
+
+# ## xiaomi stereo rig parameters:
+# f = (998.72290039062500 + 1000.0239868164063) * 0.5  # 1000.0
+# cx = 671.15643310546875
+# cy = 384.32458496093750
+# b = 0.12  # m
 
 
-# ## apollo_stereo stereo rig parameters:
-# f = 2301.3147
-# cx = 1489.8536
-# cy = 479.1750
-# b = 0.36  # m
+## apollo_stereo stereo rig parameters:
+f = 2301.3147
+cx = 1489.8536
+cy = 479.1750
+b = 0.36  # m
 
 
 def disp2depth(b, f, disp):

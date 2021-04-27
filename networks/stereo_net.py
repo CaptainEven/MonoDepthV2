@@ -1,6 +1,7 @@
 # encoding=utf-8
 from __future__ import absolute_import, division, print_function
 
+import importlib
 from collections import OrderedDict
 
 import torchvision.models as models
@@ -8,14 +9,90 @@ import torchvision.models as models
 from layers import *
 
 
+def class_for_name(module_name, class_name):
+    """
+    :param module_name:
+    :param class_name:
+    :return:
+    """
+    # load the module, will raise ImportError if module cannot be loaded
+    m = importlib.import_module(module_name)
+
+    # get the class, will raise AttributeError if class cannot be found
+    return getattr(m, class_name)
+
+
+class conv(nn.Module):
+    def __init__(self, num_in_layers, num_out_layers, kernel_size, stride):
+        """
+        :param num_in_layers:
+        :param num_out_layers:
+        :param kernel_size:
+        :param stride:
+        """
+        super(conv, self).__init__()
+        self.kernel_size = kernel_size
+        self.conv_base = nn.Conv2d(num_in_layers, num_out_layers, kernel_size=kernel_size, stride=stride)
+        self.normalize = nn.BatchNorm2d(num_out_layers)
+
+    def forward(self, x):
+        """
+        :param x:
+        :return:
+        """
+        p = int(np.floor((self.kernel_size - 1) / 2))
+        p2d = (p, p, p, p)
+        x = self.conv_base(F.pad(x, p2d))
+        x = self.normalize(x)
+        return F.elu(x, inplace=True)
+
+
+class upconv(nn.Module):
+    def __init__(self, num_in_layers, num_out_layers, kernel_size, scale):
+        super(upconv, self).__init__()
+        self.scale = scale
+        self.conv1 = conv(num_in_layers, num_out_layers, kernel_size, 1)
+
+    def forward(self, x):
+        x = nn.functional.interpolate(x, scale_factor=self.scale, mode='bilinear', align_corners=True)
+        return self.conv1(x)
+
+
+class get_disp(nn.Module):
+    def __init__(self, num_in_layers):
+        """
+        :param num_in_layers:
+        """
+        super(get_disp, self).__init__()
+
+        self.conv1 = nn.Conv2d(num_in_layers, 1, kernel_size=3, stride=1)
+        self.normalize = nn.BatchNorm2d(1)
+        self.sigmoid = torch.nn.Sigmoid()
+
+    def forward(self, x):
+        """
+        :param x:
+        :return:
+        """
+        p = 1
+        p2d = (p, p, p, p)
+        x = self.conv1(F.pad(x, p2d))
+        x = self.normalize(x)
+
+        # https://github.com/OniroAI/MonoDepth-PyTorch/issues/13
+        return 0.3 * self.sigmoid(x)
+        # return self.sigmoid(x)
+
+
 class EncoderDecoder(nn.Module):
-    def __init__(self, num_in_layers, encoder='resnet18', pretrained=False):
+    def __init__(self, num_in_layers, encoder='resnet18', pretrained=True):
         """
         :param num_in_layers:
         :param encoder:
         :param pretrained:
         """
         super(EncoderDecoder, self).__init__()
+
         assert encoder in ['resnet18', 'resnet34', 'resnet50', \
                            'resnet101', 'resnet152'], \
             "Incorrect encoder type"
@@ -24,8 +101,10 @@ class EncoderDecoder(nn.Module):
             filters = [64, 128, 256, 512]
         else:
             filters = [256, 512, 1024, 2048]
-        resnet = class_for_name("torchvision.models", encoder) \
-            (pretrained=pretrained)
+
+        # Define Resnet backbone: pre-trained or not
+        resnet = class_for_name("torchvision.models", encoder)(pretrained=pretrained)
+
         if num_in_layers != 3:  # Number of input channels
             self.firstconv = nn.Conv2d(num_in_layers, 64,
                                        kernel_size=(7, 7), stride=(2, 2),
@@ -55,15 +134,15 @@ class EncoderDecoder(nn.Module):
         self.disp4_layer = get_disp(128)
 
         self.upconv3 = upconv(128, 64, 3, 1)  #
-        self.iconv3 = conv(64 + 64 + 2, 64, 3, 1)
+        self.iconv3 = conv(64 + 64 + 1, 64, 3, 1)
         self.disp3_layer = get_disp(64)
 
         self.upconv2 = upconv(64, 32, 3, 2)
-        self.iconv2 = conv(64 + 32 + 2, 32, 3, 1)
+        self.iconv2 = conv(64 + 32 + 1, 32, 3, 1)
         self.disp2_layer = get_disp(32)
 
         self.upconv1 = upconv(32, 16, 3, 2)
-        self.iconv1 = conv(16 + 2, 16, 3, 1)
+        self.iconv1 = conv(16 + 1, 16, 3, 1)
         self.disp1_layer = get_disp(16)
 
         for m in self.modules():
@@ -133,6 +212,8 @@ class EncoderDecoder(nn.Module):
         self.outputs[("disp", 1)] = self.disp2
         self.outputs[("disp", 2)] = self.disp3
         self.outputs[("disp", 3)] = self.disp4
+
+        return self.outputs
 
 
 class StereoNet(nn.Module):

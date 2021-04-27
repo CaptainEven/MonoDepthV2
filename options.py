@@ -90,7 +90,7 @@ class MonodepthOptions:
                                  help="minimum depth(m)")
         self.parser.add_argument("--max_depth",
                                  type=float,
-                                 default=10.0,  # 100.0, 10.0
+                                 default=100.0,  # 100.0, 10.0, 200.0
                                  help="maximum depth(m)")
         self.parser.add_argument("--disparity_smoothness",
                                  type=float,
