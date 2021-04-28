@@ -1621,6 +1621,8 @@ class MergerdTrainer:
         """
         self.epoch = 0
         self.step = 0
+        self.avg_loss_list = []  # store each epoch's average loss
+
         self.start_time = time.time()
         for self.epoch in range(self.opt.num_epochs):
             ## ---------- Run an epoch
@@ -1640,7 +1642,6 @@ class MergerdTrainer:
         print("Training")
         self.set_train()
 
-        self.avg_loss_list = []
         self.running_epoch_loss = 0.0
         self.running_batch_loss = 0.0
         for batch_idx, inputs in enumerate(self.train_loader):
