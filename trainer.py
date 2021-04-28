@@ -1686,11 +1686,11 @@ class MergerdTrainer:
             # Update the step counter
             self.step += 1
 
-        # Epoch avg loss for a batch
-        avg_loss = self.running_epoch_loss / float(len(self.train_loader))
+        # Epoch average loss of all batches
+        self.avg_loss = self.running_epoch_loss / float(len(self.train_loader))  # average loss of current epoch
         print('Average loss of this epoch is {:.3f}.'.format(avg_loss))
-        self.avg_loss_list.append(avg_loss)
-        print('Epoch average loss list:\n', self.avg_loss_list)
+        self.avg_loss_list.append(self.avg_loss)
+        print('Average loss list:\n', self.avg_loss_list)
 
     def process_batch(self, inputs):
         """
