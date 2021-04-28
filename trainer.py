@@ -1631,6 +1631,7 @@ class MergerdTrainer:
 
             if (self.epoch + 1) % self.opt.save_frequency == 0:
                 self.save_model()
+        self.avg_loss_list = []
 
     def run_epoch(self, log_freq=100):
         """
