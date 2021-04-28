@@ -2053,12 +2053,14 @@ class MergerdTrainer:
         time_sofar = time.time() - self.start_time
         training_time_left = (self.num_total_steps / self.step - 1.0) * time_sofar if self.step > 0 else 0
         print_string = "epoch {:>3} | batch {:04d}/{:04d} | samples/s: {:>04.1f}" + \
-                       " | loss: {:.5f} | time elapsed: {} | time left: {}"
+                       " | loss: {:.5f} | learning rate: {:.5f}" \
+                       " | time elapsed: {} | time left: {}"
         print(print_string.format(self.epoch,
                                   batch_idx,
                                   n_batches,
                                   samples_per_sec,
                                   loss,
+                                  self.lr,
                                   sec_to_hm_str(time_sofar),
                                   sec_to_hm_str(training_time_left)))
 
