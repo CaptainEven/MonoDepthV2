@@ -7,6 +7,7 @@ from collections import OrderedDict
 import torchvision.models as models
 
 from layers import *
+from networks import ResnetEncoder, DepthDecoder
 
 
 def class_for_name(module_name, class_name):
@@ -214,6 +215,28 @@ class EncoderDecoder(nn.Module):
         self.outputs[("disp", 3)] = self.disp4
 
         return self.outputs
+
+
+class MonoDepthV2(nn.Module):
+    def __init__(self, opt):
+        """
+        :param opt:
+        """
+        super(MonoDepthV2, self).__init__()
+
+        self.opt = opt
+        self.encoder = ResnetEncoder(self.opt.num_layers, self.opt.weights_init == "pretrained")
+        self.decoder = DepthDecoder(self.encoder.num_ch_enc, self.opt.scales)
+
+    def forward(self, inputs):
+        """
+        :param inputs:
+        :return:
+        """
+        features = self.encoder(inputs["color_aug", 0, 0])
+        outputs = self.decoder(features)
+
+        return outputs
 
 
 class StereoNet(nn.Module):

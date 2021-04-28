@@ -86,7 +86,7 @@ class MyKittiDataset(MonoDataset):
         self.full_res_shape = (self.img_width, self.img_height)
         self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
 
-        self.img_ext = '.jpg'  # Apollo use jpg image format
+        self.img_ext = '.jpg'  # use jpg image format
 
     def check_depth(self):
         """

@@ -9,7 +9,7 @@
 from __future__ import absolute_import, division, print_function
 
 from options import MonodepthOptions
-from trainer import Trainer, StereoTrainer, MyStereoTrainer
+from trainer import Trainer, StereoTrainer, MyStereoTrainer, MergerdTrainer
 
 options = MonodepthOptions()
 opts = options.parse()
@@ -18,6 +18,7 @@ print(opts)
 
 if __name__ == "__main__":
     # trainer = Trainer(opts)
-    trainer = StereoTrainer(opts)
+    # trainer = StereoTrainer(opts)
     # trainer = MyStereoTrainer(opts)
+    trainer = MergerdTrainer(opts)
     trainer.train()
