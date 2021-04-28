@@ -1683,6 +1683,7 @@ class MergerdTrainer:
                 self.running_batch_loss = 0.0
                 self.save_model()
 
+            # Update the step counter
             self.step += 1
 
         # Epoch avg loss for a batch
@@ -2050,14 +2051,13 @@ class MergerdTrainer:
         samples_per_sec = self.opt.batch_size / duration
         time_sofar = time.time() - self.start_time
         training_time_left = (self.num_total_steps / self.step - 1.0) * time_sofar if self.step > 0 else 0
-        print_string = "epoch {:>3} | batch {:>6} | samples/s: {:5.1f}" + \
-                       " | loss: {:.5f} | learning rate: {:.5f}" + \
-                       " | time elapsed: {} | time left: {}"
+        print_string = "epoch {:>3} | batch {:04d}/{:04d} | samples/s: {:>03.1f}" + \
+                       " | loss: {:.3f} | time elapsed: {} | time left: {}"
         print(print_string.format(self.epoch,
                                   batch_idx,
+                                  n_batches,
                                   samples_per_sec,
                                   loss,
-                                  self.lr,
                                   sec_to_hm_str(time_sofar),
                                   sec_to_hm_str(training_time_left)))
 
