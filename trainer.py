@@ -1678,7 +1678,7 @@ class MergerdTrainer:
             self.running_batch_loss += losses["loss"].item()
 
             if batch_idx != 0 and batch_idx % log_freq == 0:
-                print('Average loss of last {:d} batches: {:.5f}.'
+                print('Average loss of the last {:d} batches: {:.5f}.'
                       .format(log_freq, self.running_batch_loss / log_freq))
                 self.running_batch_loss = 0.0
                 self.save_model()
