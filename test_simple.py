@@ -89,7 +89,7 @@ def parse_args():
                         help='GPU ids.')
     parser.add_argument('--weights_dir',
                         type=str,
-                        default='./log_kitti/stereo_model/models/weights_18/',  # 'weights'
+                        default='./log_kitti/stereo_model/models/weights_19/',  # 'weights'
                         help='The directory to store weights file')
     parser.add_argument('--image_path',
                         type=str,
@@ -210,7 +210,7 @@ def test_stereo_net(args):
     net_path = os.path.join(model_path, "net.pth")
 
     # LOADING PRETRAINED MODEL
-    print("   Loading pre-trained encoder")
+    print("   Loading pre-trained encoder and decoder")
 
     # print('Net: \n', net)
     loaded_dict_net = torch.load(net_path, map_location=device)
