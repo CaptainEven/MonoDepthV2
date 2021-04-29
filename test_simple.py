@@ -25,14 +25,13 @@ import networks
 from layers import disp_to_depth
 from utils import download_model_if_doesnt_exist, find_free_gpu, select_device
 
-METRIC_SCALE = 1.2  # xiaomi binocular: 5.4, 1.2, 3.6
 # calib_f_path = '/mnt/diskd/public/kitti/training/calib/000010.txt'
 
-# ## kitti stereo rig parameters:
-# f = 718.335
-# cx = 609.5593
-# cy = 172.8540
-# b = 0.54  # m
+## kitti stereo rig parameters:
+f = 718.335
+cx = 609.5593
+cy = 172.8540
+b = 0.54  # m
 
 # ## xiaomi stereo rig parameters:
 # f = (998.72290039062500 + 1000.0239868164063) * 0.5  # 1000.0
@@ -40,12 +39,13 @@ METRIC_SCALE = 1.2  # xiaomi binocular: 5.4, 1.2, 3.6
 # cy = 384.32458496093750
 # b = 0.12  # m
 
+# ## apollo_stereo stereo rig parameters:
+# f = 2301.3147
+# cx = 1489.8536
+# cy = 479.1750
+# b = 0.36  # m
 
-## apollo_stereo stereo rig parameters:
-f = 2301.3147
-cx = 1489.8536
-cy = 479.1750
-b = 0.36  # m
+METRIC_SCALE = b * 10.0  # xiaomi binocular: 5.4, 1.2, 3.6
 
 
 def disp2depth(b, f, disp):
@@ -72,10 +72,10 @@ def depth2disp(b, f, depth):
     :return:
     """
     depth = depth.astype(np.float32)
-    possitive_inds = np.where(depth > 0.0)
+    positive_inds = np.where(depth > 0.0)
 
     disp = np.zeros_like(depth, dtype=np.float32)
-    disp[possitive_inds] = b * f / depth[possitive_inds]
+    disp[positive_inds] = b * f / depth[positive_inds]
 
     return disp
 
@@ -89,11 +89,11 @@ def parse_args():
                         help='GPU ids.')
     parser.add_argument('--weights_dir',
                         type=str,
-                        default='./log_apollo/stereo_model/models/epoch_3/',  # 'weights'
+                        default='./log_kitti/stereo_model/models/weights_18/',  # 'weights'
                         help='The directory to store weights file')
     parser.add_argument('--image_path',
                         type=str,
-                        default='./assets/00000.png',  # apollo_train_0.jpg
+                        default='./assets/apollo_train_1_00000.jpg',  # apollo_train_0.jpg
                         help='path to a test image or folder of images')
     parser.add_argument('--video_path',
                         type=str,
@@ -119,6 +119,21 @@ def parse_args():
                             "mono+stereo_1024x320",
                             "stereo_768x448"
                         ])
+    parser.add_argument("--weights_init",
+                        default="pretrained",
+                        type=str,
+                        help="pretrained or scratch",
+                        choices=["pretrained", "scratch"])
+    parser.add_argument("--scales",
+                        nargs="+",
+                        type=int,
+                        help="scales used in the loss",
+                        default=[0, 1, 2, 3])
+    parser.add_argument("--num_layers",
+                        type=int,
+                        help="number of resnet layers",
+                        default=18,
+                        choices=[18, 34, 50, 101, 152])  # resnet backbone selection
     parser.add_argument('--ext',
                         type=str,
                         default='jpg',  # 'jpg'
@@ -132,7 +147,7 @@ def parse_args():
                         help="minimum depth")
     parser.add_argument("--max_depth",
                         type=float,
-                        default=10.0,  # 100.0 10.0
+                        default=100.0,  # 100.0 10.0
                         help="maximum depth")
 
     return parser.parse_args()
@@ -163,11 +178,26 @@ def test_stereo_net(args):
     assert args.model_name is not None, \
         "You must specify the --model_name parameter; see README.md for an example"
 
+    if not os.path.isdir(args.weights_dir):
+        print('[Err]: invalid weights directory.')
+        return
+
     ## ---------- set device
     device = str(find_free_gpu())
     print('Using gpu: {:s}'.format(device))
     os.environ['CUDA_VISIBLE_DEVICES'] = device
     device = select_device(device='cpu' if not torch.cuda.is_available() else device)
+
+    ## Define model
+    # net = networks.StereoNet(num_layers=18,
+    #                          pre_trained=False,
+    #                          num_input_images=1,
+    #                          num_ch_enc=[64, 64, 128, 256, 512],
+    #                          scales=range(4),
+    #                          num_output_channels=1,
+    #                          use_skips=True)
+    net = networks.MonoDepthV2(args)
+    print(net)
 
     ## check whether weights_dir is leaf dir
     sub_dirs = [x for x in os.listdir(args.weights_dir) if os.path.isdir(args.weights_dir + '/' + x)]
@@ -181,13 +211,7 @@ def test_stereo_net(args):
 
     # LOADING PRETRAINED MODEL
     print("   Loading pre-trained encoder")
-    net = networks.StereoNet(num_layers=18,
-                             pre_trained=False,
-                             num_input_images=1,
-                             num_ch_enc=[64, 64, 128, 256, 512],
-                             scales=range(4),
-                             num_output_channels=1,
-                             use_skips=True)
+
     # print('Net: \n', net)
     loaded_dict_net = torch.load(net_path, map_location=device)
 
@@ -230,6 +254,8 @@ def test_stereo_net(args):
 
                 # ---------- PREDICTION
                 input_image = input_image.to(device)
+                # features = net.encoder.forward(input_image)
+                # outputs = net.decoder.forward(features)
                 outputs = net.forward(input_image)
                 # features = net.get_encoder_features(input_image)
                 # outputs = net.get_decoder_depths(features)
@@ -251,7 +277,10 @@ def test_stereo_net(args):
                 ## ----- @even: Save metric depth image(gray scale) file
                 metric_depth = METRIC_SCALE * scaled_depth  # turn scaled depth to metric depth
                 metric_depth = metric_depth.squeeze().cpu().numpy()
-                metric_depth_img = np.uint16(metric_depth * 256.0)  # transform to uint16 format
+                max_depth = np.max(metric_depth)  # get max depth value
+                print('Max depth: {:.3f}m'.format(max_depth))
+
+                metric_depth_img = np.uint16(metric_depth)  # transform to uint16 format, * 256.0
                 metric_depth_img_f_path = output_directory + '/' + output_name + '_depthimg' + '.png'
                 img = pil.fromarray(metric_depth_img)
                 img.save(metric_depth_img_f_path)  # save depth image
@@ -259,8 +288,7 @@ def test_stereo_net(args):
                 metric_depth_npy_f_path = output_directory + '/' + output_name + '.npy'
                 np.save(metric_depth_npy_f_path, metric_depth)  # save depth npy file
                 print('{:s} saved.'.format(metric_depth_npy_f_path))
-                max_depth = np.max(metric_depth)  # get max depth value
-                print('Max depth: {:.3f}m'.format(max_depth))
+
 
 
 def test_simple(args):

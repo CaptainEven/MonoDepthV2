@@ -233,7 +233,8 @@ class MonoDepthV2(nn.Module):
         :param inputs:
         :return:
         """
-        features = self.encoder(inputs["color_aug", 0, 0])
+        # features = self.encoder(inputs["color_aug", 0, 0])
+        features = self.encoder(inputs)
         outputs = self.decoder(features)
 
         return outputs
