@@ -1629,8 +1629,11 @@ class MergerdTrainer:
             self.run_epoch()
             ## ----------
 
+            self.model_lr_scheduler.step()
+
             if (self.epoch + 1) % self.opt.save_frequency == 0:
                 self.save_model()
+
         self.avg_loss_list = []
 
     def run_epoch(self, log_freq=100):
@@ -1638,7 +1641,7 @@ class MergerdTrainer:
         Run a single epoch of training and validation
         :return:
         """
-        self.model_lr_scheduler.step()
+        # self.model_lr_scheduler.step()
 
         print("Training")
         self.set_train()
@@ -2055,7 +2058,7 @@ class MergerdTrainer:
         time_sofar = time.time() - self.start_time
         training_time_left = (self.num_total_steps / self.step - 1.0) * time_sofar if self.step > 0 else 0
         print_string = "epoch {:>3} | batch {:04d}/{:04d} | samples/s: {:>04.1f}" + \
-                       " | loss: {:.5f} | learning rate: {:.5f}" \
+                       " | loss: {:.5f} | learning rate: {:.3e}" \
                        " | time elapsed: {} | time left: {}"
         print(print_string.format(self.epoch,
                                   batch_idx,

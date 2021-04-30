@@ -89,7 +89,7 @@ def parse_args():
                         help='GPU ids.')
     parser.add_argument('--weights_dir',
                         type=str,
-                        default='./log_kitti/stereo_model/models/weights_19/',  # 'weights'
+                        default='./log_kitti/stereo_model/models/weights_34/',  # 'weights'
                         help='The directory to store weights file')
     parser.add_argument('--image_path',
                         type=str,
