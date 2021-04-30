@@ -1403,7 +1403,7 @@ class StereoTrainer:
             print("Cannot find Adam weights so Adam is randomly initialized")
 
 
-class MergerdTrainer:
+class MergerdTrainer:  # Merge Encoder and Decoder
     def __init__(self, options):
         """
         :param options:
@@ -1438,16 +1438,6 @@ class MergerdTrainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")  # add stereo frame id
 
-        # # Define Encoder and Decoder
-        # self.models["encoder"] = networks.ResnetEncoder(self.opt.num_layers,
-        #                                                 self.opt.weights_init == "pretrained")
-        # self.models["encoder"].to(self.device)
-        # self.parameters_to_train += list(self.models["encoder"].parameters())
-        #
-        # self.models["depth"] = networks.DepthDecoder(self.models["encoder"].num_ch_enc, self.opt.scales)
-        # self.models["depth"].to(self.device)
-        # self.parameters_to_train += list(self.models["depth"].parameters())
-
         # Define Merged models of Encoder and Decoder
         self.models["net"] = networks.MonoDepthV2(self.opt)
         self.models["net"].to(self.device)
@@ -1468,8 +1458,6 @@ class MergerdTrainer:
                                                            num_frames_to_predict_for=2)
 
             elif self.opt.pose_model_type == "shared":
-                # self.models["pose"] = networks.PoseDecoder(self.models["encoder"].num_ch_enc,
-                #                                            self.num_pose_frames)
                 self.models["pose"] = networks.PoseDecoder(self.models["net"].encoder.num_ch_enc,
                                                            self.num_pose_frames)
 
@@ -1486,9 +1474,6 @@ class MergerdTrainer:
 
             # Our implementation of the predictive masking baseline has the the same architecture
             # as our depth decoder. We predict a separate mask for each source frame.
-            # self.models["predictive_mask"] = networks.DepthDecoder(num_ch_enc=self.models["encoder"].num_ch_enc,
-            #                                                        scales=self.opt.scales,
-            #                                                        num_output_channels=(len(self.opt.frame_ids) - 1))
             self.models["predictive_mask"] = networks.DepthDecoder(num_ch_enc=self.models["net"].encoder.num_ch_enc,
                                                                    scales=self.opt.scales,
                                                                    num_output_channels=(len(self.opt.frame_ids) - 1))
@@ -1710,7 +1695,6 @@ class MergerdTrainer:
             # If we are using a shared encoder for both depth and pose (as advocated
             # in monodepthv1), then all images are fed separately through the depth encoder.
             all_color_aug = torch.cat([inputs[("color_aug", i, 0)] for i in self.opt.frame_ids])
-            # all_features = self.models["encoder"].forward(all_color_aug)
             all_features = self.models["net"].encoder.forward(all_color_aug)
             all_features = [torch.split(f, self.opt.batch_size) for f in all_features]
 
@@ -1718,12 +1702,10 @@ class MergerdTrainer:
             for i, k in enumerate(self.opt.frame_ids):
                 features[k] = [f[i] for f in all_features]
 
-            # outputs = self.models["depth"].forward(features[0])
             outputs = self.models["net"].decoder.forward(features[0])
 
         else:
             # Otherwise, we only feed the image with frame_id 0 through the depth encoder
-            # features = self.models["encoder"].forward(inputs["color_aug", 0, 0])
             features = self.models["net"].encoder.forward(inputs["color_aug", 0, 0])
 
             # outputs = self.models["depth"].forward(features)
