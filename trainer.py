@@ -2167,6 +2167,10 @@ class MergerdTrainer:
             print("Loading Adam weights")
             optimizer_dict = torch.load(optimizer_load_path)
             self.model_optimizer.load_state_dict(optimizer_dict)
+
+            if self.opt.learning_rate:
+                self.model_optimizer.param_groups[0]["lr"] = self.opt.learning_rate
+                print('Learning rate from config: {:.3e}.'.format(self.model_optimizer.param_groups[0]["lr"]))
         else:
             print("Cannot find Adam weights so Adam is randomly initialized")
 
