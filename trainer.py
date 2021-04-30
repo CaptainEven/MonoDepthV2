@@ -1877,10 +1877,7 @@ class MergerdTrainer:
 
                 ## project source 3d points to target view pixel coordinates
                 pix_coords = self.project_3d[source_scale].forward(pts3d_homo, inputs[("K", source_scale)], T)
-
                 outputs[("sample", frame_id, scale)] = pix_coords
-                # print(torch.min(pix_coords))
-                # print(torch.max(pix_coords))
 
                 ## ------ reconstructed target color
                 outputs[("color", frame_id, scale)] = F.grid_sample(inputs[("color", frame_id, source_scale)],
