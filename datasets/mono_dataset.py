@@ -79,6 +79,9 @@ class MonoDataset(data.Dataset):
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
 
+        # @even: do normalization in pre-processing, using Imagenet norm parameters
+        self.normalize = transforms.Normalize(mean=0.45, std=1.0)
+
         # We need to specify augmentations differently in newer versions of torchvision.
         # We first try the newer tuple version; if this fails we fall back to scalars
         try:
@@ -101,7 +104,7 @@ class MonoDataset(data.Dataset):
 
         self.load_depth = self.check_depth()
 
-    def preprocess(self, inputs, color_aug):
+    def preprocess(self, inputs, color_aug, do_normalize=True):
         """
         Resize colour images to the required scales and augment if required
         We create the color_aug object in advance and apply the same augmentation to all
@@ -114,7 +117,7 @@ class MonoDataset(data.Dataset):
         for k in list(inputs):
             frame = inputs[k]
             if "color" in k:
-                n, im, i = k
+                n, im, j = k
                 for i in range(self.num_scales):
                     inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
 
@@ -122,10 +125,18 @@ class MonoDataset(data.Dataset):
             f = inputs[k]
             if "color" in k:
                 n, im, i = k
-                inputs[(n, im, i)] = self.to_tensor(f)
-                inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
+
+                if do_normalize:
+                    inputs[(n, im, i)] = self.normalize(self.to_tensor(f))
+                    inputs[(n + "_aug", im, i)] = self.normalize(self.to_tensor(color_aug(f)))
+                else:
+                    inputs[(n, im, i)] = self.to_tensor(f)
+                    inputs[(n + "_aug", im, i)] = self.normalize(self.to_tensor(color_aug(f)))
 
     def __len__(self):
+        """
+        :return:
+        """
         return len(self.file_names)
 
     def __getitem__(self, idx):
@@ -198,7 +209,8 @@ class MonoDataset(data.Dataset):
         else:
             color_aug = (lambda x: x)
 
-        self.preprocess(inputs, color_aug)
+        # Do image data pre-processing
+        self.preprocess(inputs, color_aug, do_normalize=True)
 
         for i in self.frame_ids:
             del inputs[("color", i, -1)]

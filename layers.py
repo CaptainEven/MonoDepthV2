@@ -128,7 +128,6 @@ class ConvBlock(nn.Module):
     """
     Layer to perform a convolution followed by ELU
     """
-
     def __init__(self, in_channels, out_channels):
         """
         :param in_channels:
@@ -137,7 +136,8 @@ class ConvBlock(nn.Module):
         super(ConvBlock, self).__init__()
 
         self.conv = Conv3x3(in_channels, out_channels)
-        self.nonlin = nn.ELU(inplace=True)
+        # self.nonlin = nn.ELU(inplace=True)
+        self.nonlin = nn.ReLU(inplace=True)
 
     def forward(self, x):
         """
@@ -153,7 +153,6 @@ class Conv3x3(nn.Module):
     """
     Layer to pad and convolve input
     """
-
     def __init__(self, in_channels, out_channels, use_refl=True):
         """
         :param in_channels:
@@ -162,20 +161,20 @@ class Conv3x3(nn.Module):
         """
         super(Conv3x3, self).__init__()
 
-        if use_refl:
-            self.pad = nn.ReflectionPad2d(1)
-        else:
-            self.pad = nn.ZeroPad2d(1)
+        # if use_refl:
+        #     self.pad = nn.ReflectionPad2d(1)
+        # else:
+        #     self.pad = nn.ZeroPad2d(1)
 
-        self.conv = nn.Conv2d(int(in_channels), int(out_channels), 3)
+        self.conv = nn.Conv2d(int(in_channels), int(out_channels), 3, padding=1)
 
     def forward(self, x):
         """
         :param x:
         :return:
         """
-        out = self.pad(x)
-        out = self.conv(out)
+        # out = self.pad(x)
+        out = self.conv(x)
         return out
 
 
@@ -254,7 +253,6 @@ class Project3D(nn.Module):
     """
     Layer which projects 3D points into a camera with intrinsics K and at position T
     """
-
     def __init__(self, batch_size, height, width, eps=1e-7):
         """
         :param batch_size:
@@ -296,13 +294,15 @@ class Project3D(nn.Module):
 
 
 def upsample(x):
-    """Upsample input tensor by a factor of 2
+    """
+    Upsample input tensor by a factor of 2
     """
     return F.interpolate(x, scale_factor=2, mode="nearest")
 
 
 def get_smooth_loss(disp, img):
-    """Computes the smoothness loss for a disparity image
+    """
+    Computes the smoothness loss for a disparity image
     The color image is used for edge-aware smoothness
     """
     grad_disp_x = torch.abs(disp[:, :, :, :-1] - disp[:, :, :, 1:])

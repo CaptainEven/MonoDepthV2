@@ -1505,6 +1505,7 @@ class MergerdTrainer:  # Merge Encoder and Decoder
             "my_kitti": datasets.MyKittiDataset,
         }
         self.dataset = datasets_dict[self.opt.dataset]
+        print('Dataset: {:s}.'.format(self.opt.dataset))
 
         f_path = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
 

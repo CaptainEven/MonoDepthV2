@@ -89,11 +89,11 @@ def parse_args():
                         help='GPU ids.')
     parser.add_argument('--weights_dir',
                         type=str,
-                        default='./log_kitti/stereo_model/models/weights_34/',  # 'weights'
+                        default='./log_kitti/stereo_model/models/weights_0/',  # 'weights'
                         help='The directory to store weights file')
     parser.add_argument('--image_path',
                         type=str,
-                        default='./assets/apollo_train_1_00000.jpg',  # apollo_train_0.jpg
+                        default='./assets/0000000200.jpg',  # apollo_train_0.jpg
                         help='path to a test image or folder of images')
     parser.add_argument('--video_path',
                         type=str,
@@ -247,18 +247,17 @@ def test_stereo_net(args):
                     continue
 
                 # Load image and preprocess
-                input_image = pil.open(image_path).convert('RGB')
-                img_width, img_height = input_image.size
-                input_image = input_image.resize((net_width, net_height), pil.LANCZOS)
-                input_image = transforms.ToTensor()(input_image).unsqueeze(0)
+                img = pil.open(image_path).convert('RGB')
+                img_width, img_height = img.size
+                img = img.resize((net_width, net_height), pil.LANCZOS)
+                img = transforms.ToTensor()(img)
+                img = transforms.Normalize(mean=0.45, std=1.0)(img).unsqueeze(0)  # normalize
 
                 # ---------- PREDICTION
-                input_image = input_image.to(device)
-                # features = net.encoder.forward(input_image)
+                img = img.to(device)
+                # features = net.encoder.forward(img)
                 # outputs = net.decoder.forward(features)
-                outputs = net.forward(input_image)
-                # features = net.get_encoder_features(input_image)
-                # outputs = net.get_decoder_depths(features)
+                outputs = net.forward(img)
                 # ----------
 
                 ## ----- Get output
@@ -288,7 +287,6 @@ def test_stereo_net(args):
                 metric_depth_npy_f_path = output_directory + '/' + output_name + '.npy'
                 np.save(metric_depth_npy_f_path, metric_depth)  # save depth npy file
                 print('{:s} saved.'.format(metric_depth_npy_f_path))
-
 
 
 def test_simple(args):
@@ -695,10 +693,77 @@ def get_disps_depths_for_apollo_stereo(args,
             # print('{:s} saved.'.format(dispimg_f_path))
 
 
+# from torchsummary import summary
+
+
+def test_each_layer_of_net(args):
+    """
+    :param args:
+    :return:
+    """
+    assert args.model_name is not None, \
+        "You must specify the --model_name parameter; see README.md for an example"
+
+    if not os.path.isdir(args.weights_dir):
+        print('[Err]: invalid weights directory.')
+        return
+
+    ## ---------- set device
+    device = str(find_free_gpu())
+    print('Using gpu: {:s}'.format(device))
+    os.environ['CUDA_VISIBLE_DEVICES'] = device
+    # device = select_device(device='cpu' if not torch.cuda.is_available() else device)
+    device = 'cpu'
+
+    ## Define model
+    net = networks.MonoDepthV2(args)
+    print(net)
+
+    ## check whether weights_dir is leaf dir
+    sub_dirs = [x for x in os.listdir(args.weights_dir) if os.path.isdir(args.weights_dir + '/' + x)]
+    if len(sub_dirs) > 0:
+        model_path = os.path.join(args.weights_dir, args.model_name)
+    else:
+        model_path = args.weights_dir
+
+    print("-> Loading model from ", model_path)
+    net_path = os.path.join(model_path, "net.pth")
+
+    # LOADING PRETRAINED MODEL
+    print("   Loading pre-trained encoder and decoder")
+
+    # print('Net: \n', net)
+    loaded_dict_net = torch.load(net_path, map_location=device)
+
+    # extract the height and width of image that this model was trained with
+    net_height = loaded_dict_net['height']
+    net_width = loaded_dict_net['width']
+    filtered_dict_enc = {k: v for k, v in loaded_dict_net.items() if k in net.state_dict()}
+    net.load_state_dict(filtered_dict_enc)
+    print('{:s} loaded.'.format(net_path))
+
+    ## set network device and mode
+    net.to(device)
+    net.eval()
+
+    X = torch.ones([1, 3, 320, 1024]).to(device)
+
+    layers_dict = dict(net.named_children())
+    for layer_i, (layer_name, layer) in enumerate(layers_dict.items()):
+        ## traverse each child parameter of the layer
+        for param_i, (param_name, param) in enumerate(layer.named_parameters()):
+            print(param_name)
+            X = param_name.forward(X)
+            print(X.shape)
+
+    # summary(net, (3, 1024, 320), batch_size=1, device=device)
+
+
 if __name__ == '__main__':
     args = parse_args()
     # test_simple(args)
     test_stereo_net(args)
+    # test_each_layer_of_net(args)
 
     # build_img_depth_show(rgb_video_path='./assets/indoor.mp4',
     #                      show_video_path='./assets/indoor_depth.mp4')

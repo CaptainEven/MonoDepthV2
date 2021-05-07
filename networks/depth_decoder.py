@@ -52,21 +52,21 @@ class DepthDecoder(nn.Module):
         self.decoder = nn.ModuleList(list(self.convs.values()))
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, input_features):
+    def forward(self, features):
         """
-        :param input_features:
+        :param features:
         :return:
         """
         self.outputs = {}
 
         # decoder
-        x = input_features[-1]
+        x = features[-1]
         for i in range(4, -1, -1):
             x = self.convs[("upconv", i, 0)](x)
             x = [upsample(x)]
 
             if self.use_skips and i > 0:
-                x += [input_features[i - 1]]
+                x += [features[i - 1]]
 
             x = torch.cat(x, 1)
             x = self.convs[("upconv", i, 1)](x)

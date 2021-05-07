@@ -112,21 +112,23 @@ class ResnetEncoder(nn.Module):
         if num_layers > 34:
             self.num_ch_enc[1:] *= 4
 
-    def forward(self, input_image):
+    def forward(self, img):
         """
-        :param input_image:
+        :param img:
         :return:
         """
         self.features = []
 
-        x = (input_image - 0.45) / 0.225
-        x = self.encoder.conv1(x)
+        # normalize
+        # x = (img - 0.45) / 0.225
+
+        x = self.encoder.conv1(img)
         x = self.encoder.bn1(x)
 
-        self.features.append(self.encoder.relu(x))
-        self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
-        self.features.append(self.encoder.layer2(self.features[-1]))
-        self.features.append(self.encoder.layer3(self.features[-1]))
-        self.features.append(self.encoder.layer4(self.features[-1]))
+        self.features.append(self.encoder.relu(x))  # 0
+        self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))  # 1
+        self.features.append(self.encoder.layer2(self.features[-1]))  # 2
+        self.features.append(self.encoder.layer3(self.features[-1]))  # 3
+        self.features.append(self.encoder.layer4(self.features[-1]))  # 4
 
         return self.features
