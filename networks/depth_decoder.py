@@ -24,9 +24,11 @@ class DepthDecoder(nn.Module):
         super(DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
+        print('Output channels: {:d}.'.format(self.num_output_channels))
         self.use_skips = use_skips
         self.upsample_mode = 'nearest'
         self.scales = scales
+        print('Scales: ', self.scales)
 
         self.num_ch_enc = num_ch_enc
         self.num_ch_dec = np.array([16, 32, 64, 128, 256])
@@ -66,9 +68,9 @@ class DepthDecoder(nn.Module):
             x = [upsample(x)]
 
             if self.use_skips and i > 0:
-                x += [features[i - 1]]
+                x += [features[i - 1]]  # 'Add' operation
 
-            x = torch.cat(x, 1)
+            x = torch.cat(x, 1)  # 'Concatenate' operation
             x = self.convs[("upconv", i, 1)](x)
 
             ## the last layer of each scale

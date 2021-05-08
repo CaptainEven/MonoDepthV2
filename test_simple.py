@@ -89,7 +89,7 @@ def parse_args():
                         help='GPU ids.')
     parser.add_argument('--weights_dir',
                         type=str,
-                        default='./log_kitti/stereo_model/models/weights_0/',  # 'weights'
+                        default='./log_kitti/stereo_model/models/weights_5/',  # 'weights'
                         help='The directory to store weights file')
     parser.add_argument('--image_path',
                         type=str,
@@ -215,14 +215,14 @@ def test_stereo_net(args):
     # print('Net: \n', net)
     loaded_dict_net = torch.load(net_path, map_location=device)
 
-    # extract the height and width of image that this model was trained with
+    # Extract the height and width of image that this model was trained with
     net_height = loaded_dict_net['height']
     net_width = loaded_dict_net['width']
     filtered_dict_enc = {k: v for k, v in loaded_dict_net.items() if k in net.state_dict()}
     net.load_state_dict(filtered_dict_enc)
     print('{:s} loaded.'.format(net_path))
 
-    ## set network device and mode
+    ## Set network device and work mode
     net.to(device)
     net.eval()
 
@@ -249,8 +249,10 @@ def test_stereo_net(args):
                 # Load image and preprocess
                 img = pil.open(image_path).convert('RGB')
                 img_width, img_height = img.size
+
+                # Pre-processing
                 img = img.resize((net_width, net_height), pil.LANCZOS)
-                img = transforms.ToTensor()(img)
+                img = transforms.ToTensor()(img)  # [0, 1]
                 img = transforms.Normalize(mean=0.45, std=1.0)(img).unsqueeze(0)  # normalize
 
                 # ---------- PREDICTION
