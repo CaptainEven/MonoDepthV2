@@ -166,6 +166,7 @@ class Conv3x3(nn.Module):
         # else:
         #     self.pad = nn.ZeroPad2d(1)
 
+        # @even: modified padding
         self.conv = nn.Conv2d(int(in_channels), int(out_channels), 3, padding=1)
 
     def forward(self, x):
